@@ -1,6 +1,5 @@
 from typing import Any, AsyncGenerator
 
-import asyncpg
 import httpx
 import pytest
 from sqlalchemy import make_url, text
@@ -26,6 +25,8 @@ TestingSessionLocal = async_sessionmaker(
 
 async def create_database_if_not_exists() -> None:
     """Create test database if it doesn't exist."""
+    import asyncpg
+
     test_database_url = make_url(settings.TEST_DATABASE_URL)
     try:
         await asyncpg.connect(
