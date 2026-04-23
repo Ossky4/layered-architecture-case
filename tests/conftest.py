@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Any, AsyncGenerator
 
 import httpx
@@ -16,11 +17,19 @@ from layered_architecture.db.depends import get_db
 from layered_architecture.db.models.base import Base
 from layered_architecture.main import app
 
-# Create async engine for tests
-engine = create_async_engine(settings.TEST_DATABASE_URL, echo=True)
-TestingSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+@lru_cache(maxsize=1)
+def get_testing_session_local() -> async_sessionmaker[AsyncSession]:
+    """Create the test session factory lazily.
+
+    Importing this module should not require loading DB drivers unless a fixture
+    actually needs a database connection.
+    """
+    engine = create_async_engine(settings.TEST_DATABASE_URL, echo=True)
+    return async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
 
 async def create_database_if_not_exists() -> None:
@@ -208,7 +217,8 @@ async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
     :yield: The test session
     :rtype: AsyncGenerator[AsyncSession, None]
     """
-    async with TestingSessionLocal() as session:
+    testing_session_local = get_testing_session_local()
+    async with testing_session_local() as session:
         yield session
 
 
